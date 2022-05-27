@@ -7,19 +7,19 @@ DB_USER=${POSTGRES_USER:=postgres}
 DB_PASSWORD="${POSTGRES_PASSWORD:=password}"
 DB_NAME="${POSTGRES_DB:=newsletter}"
 DB_PORT="${POSTGRES_PORT:=5432}"
-CONTAINER_NAME=innfis-postgres
 
-docker run \
+CONTAINER_ID=$(\
+  docker run \
 -e POSTGRES_USER=${DB_USER} \
 -e POSTGRES_PASSWORD=${DB_PASSWORD} \
 -e POSTGRES_DB=${DB_NAME} \
 -p "${DB_PORT}":5432 \
 -d postgres \
---name ${innfis-postgres} \
 postgres -N 10
+)
 
 export PGPASSWORD="${DB_PASSWORD}"
-until winpty docker exec -it ${innfis-postgres} psql -h "localhost" -U "${DB_USER}" -p "${DB_PORT}" -d "postgres" -c '\q'; do
+until winpty docker exec -it ${CONTAINER_ID} psql -h "localhost" -U "${DB_USER}" -p "${DB_PORT}" -d "postgres" -c '\q'; do
 >&2 echo "Postgres is still unavailable - sleeping"
 sleep 1
 done
@@ -27,3 +27,4 @@ done
 
 export DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}
 sqlx database create
+sqlx migrate run
