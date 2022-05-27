@@ -1,9 +1,11 @@
 use std::net::TcpListener;
+use sqlx::{PgConnection, Connection};
+
 use zero2prod;
+use zero2prod::configuration::get_configuration;
 
 fn spawn_app() -> String {
-  let listener = TcpListener::bind("127.0.0.1:0")
-    .expect("failed to bind random port");
+  let listener = TcpListener::bind("127.0.0.1:0").expect("failed to bind random port");
   let port = listener.local_addr().unwrap().port();
 
   let server = zero2prod::run(listener).expect("failed to bind address");
@@ -24,13 +26,20 @@ async fn health_check_works() {
     .await
     .expect("failed to execute request");
 
-    assert!(response.status().is_success());
-    assert_eq!(Some(0), response.content_length());
+  assert!(response.status().is_success());
+  assert_eq!(Some(0), response.content_length());
 }
 
 #[tokio::test]
 async fn subscribe_returns_a_200_for_valid_form_data() {
   let app_address = spawn_app();
+
+  let configuration = get_configuration().expect("failed to read conf");
+  let connection_string = configuration.database.connection_string();
+  let connection = PgConnection::connect(&connection_string)
+    .await
+    .expect("failed to connect database");
+
   let client = reqwest::Client::new();
 
   let body = "name=le%20guin&email=ursula_le_guin%40test.com";
@@ -42,7 +51,7 @@ async fn subscribe_returns_a_200_for_valid_form_data() {
     .await
     .expect("failed to execute request.");
 
-    assert_eq!(200, response.status().as_u16());
+  assert_eq!(200, response.status().as_u16());
 }
 
 #[tokio::test]
@@ -53,7 +62,7 @@ async fn subscribe_returns_a_400_when_data_is_missing() {
   let test_cases = vec![
     ("name=innfi", "missing the email"),
     ("email=innfi@test.com", "missing the name"),
-    ("", "missing both name and email")
+    ("", "missing both name and email"),
   ];
 
   for (invalid_body, error_message) in test_cases {
