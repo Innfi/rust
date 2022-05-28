@@ -1,12 +1,18 @@
 use std::net::TcpListener;
+use sqlx::{Connection, PgConnection};
+
 use zero2prod::configuration::get_configuration;
-use zero2prod::run;
+use zero2prod::startup::run;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-  let configurations = get_configuration().expect("failed to read configurations");
+  let configuration = get_configuration().expect("failed to read configurations");
+  let connection = PgConnection::connect(&configuration.database.connection_string())
+    .await
+    .expect("failed to connect to database");
 
-  let listener = TcpListener::bind("127.0.0.1:8080").expect("failed to bind port");
+  let address = format!("127.0.0.1:{}", configuration.application_port);
+  let listener = TcpListener::bind(address)?;
 
-  run(listener)?.await
+  run(listener, connection)?.await
 }
