@@ -1,9 +1,9 @@
 use std::net::TcpListener;
-use sqlx::{PgConnection, Connection};
-use sqlx::PgPool;
+use sqlx::{Connection, Executor, PgConnection, PgPool};
+use uuid::Uuid;
 
 use zero2prod;
-use zero2prod::configuration::get_configuration;
+use zero2prod::configuration::{get_configuration, DatabaseSettings};
 use zero2prod::startup::run;
 
 pub struct TestApp {
@@ -17,20 +17,39 @@ async fn spawn_app() -> TestApp {
   let port = listener.local_addr().unwrap().port();
   let address = format!("http://127.0.0.1:{}", port);
 
-  let configuration = get_configuration().expect("failed to read configurations");
-  let connection_pool = PgPool::connect(&configuration.database.connection_string())
-    .await
-    .expect("failed to connect to database");
+  let mut configuration = get_configuration().expect("failed to read configurations");
+  configuration.database.database_name = Uuid::new_v4().to_string();
+
+  let connection_pool = configure_database(&configuration.database).await;
 
   let server = run(listener, connection_pool.clone())
     .expect("failed to bind address");
   let _ = tokio::spawn(server);
 
-  //format!("http://127.0.0.1:{}", port)
   TestApp {
     address,
     db_pool: connection_pool,
   }
+}
+
+pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
+  let mut connection = PgConnection::connect(&config.connection_string_without_db())
+    .await
+    .expect("failed to connect to database");
+  connection
+    .execute(format!(r#"CREATE DATABASE "{}";"#, config.database_name).as_str())
+    .await
+    .expect("failed to create database");
+  
+  let connection_pool = PgPool::connect(&config.connection_string())
+    .await
+    .expect("failed to connect to database");
+  sqlx::migrate!("./util/migrations")
+    .run(&connection_pool)
+    .await
+    .expect("failed to migrate the database");
+
+  connection_pool
 }
 
 #[tokio::test]
@@ -48,63 +67,56 @@ async fn health_check_works() {
   assert_eq!(Some(0), response.content_length());
 }
 
-// #[tokio::test]
-// async fn subscribe_returns_a_200_for_valid_form_data() {
-//   let app_address = spawn_app().await;
+#[tokio::test]
+async fn subscribe_returns_a_200_for_valid_form_data() {
+  let test_app = spawn_app().await;
+  let client = reqwest::Client::new();
 
-//   let configuration = get_configuration().expect("failed to read conf");
-//   let connection_string = configuration.database.connection_string();
-//   let mut connection = PgConnection::connect(&connection_string)
-//     .await
-//     .expect("failed to connect database");
+  let body = "name=le%20guin&email=ursula_le_guin%40test.com";
+  let response = client
+    .post(&format!("{}/subscriptions", &test_app.address))
+    .header("Content-Type", "application/x-www-form-urlencoded")
+    .body(body)
+    .send()
+    .await
+    .expect("failed to execute request.");
 
-//   let client = reqwest::Client::new();
+  assert_eq!(200, response.status().as_u16());
 
-//   let body = "name=le%20guin&email=ursula_le_guin%40test.com";
-//   let response = client
-//     .post(&format!("{}/subscriptions", &app_address))
-//     .header("Content-Type", "application/x-www-form-urlencoded")
-//     .body(body)
-//     .send()
-//     .await
-//     .expect("failed to execute request.");
+  let saved = sqlx::query!("SELECT email, name FROM subscriptions",)
+    .fetch_one(&test_app.db_pool)
+    .await
+    .expect("failed to fetch saved subscription.");
 
-//   assert_eq!(200, response.status().as_u16());
+  assert_eq!(saved.email, "ursula_le_guin@test.com");
+  assert_eq!(saved.name, "le guin");
+}
 
-//   let saved = sqlx::query!("SELECT email, name FROM subscriptions",)
-//     .fetch_one(&mut connection)
-//     .await
-//     .expect("failed to fetch saved subscription.");
+#[tokio::test]
+async fn subscribe_returns_a_400_when_data_is_missing() {
+  let test_app = spawn_app().await;
+  let client = reqwest::Client::new();
 
-//   assert_eq!(saved.email, "ursula_le_guin%40test.com");
-//   assert_eq!(saved.name, "le guin");
-// }
+  let test_cases = vec![
+    ("name=innfi", "missing the email"),
+    ("email=innfi@test.com", "missing the name"),
+    ("", "missing both name and email"),
+  ];
 
-// #[tokio::test]
-// async fn subscribe_returns_a_400_when_data_is_missing() {
-//   let app_address = spawn_app().await;
-//   let client = reqwest::Client::new();
+  for (invalid_body, error_message) in test_cases {
+    let response = client
+      .post(&format!("{}/subscriptions", &test_app.address))
+      .header("Content-Type", "applications/x-www-form-urlencoded")
+      .body(invalid_body)
+      .send()
+      .await
+      .expect("failed to execute request.");
 
-//   let test_cases = vec![
-//     ("name=innfi", "missing the email"),
-//     ("email=innfi@test.com", "missing the name"),
-//     ("", "missing both name and email"),
-//   ];
-
-//   for (invalid_body, error_message) in test_cases {
-//     let response = client
-//       .post(&format!("{}/subscriptions", &app_address))
-//       .header("Content-Type", "applications/x-www-form-urlencoded")
-//       .body(invalid_body)
-//       .send()
-//       .await
-//       .expect("failed to execute request.");
-
-//     assert_eq!(
-//       400,
-//       response.status().as_u16(),
-//       "api did not fail with 400 when the paylaod was {}.",
-//       error_message,
-//     );
-//   }
-// }
+    assert_eq!(
+      400,
+      response.status().as_u16(),
+      "api did not fail with 400 when the paylaod was {}.",
+      error_message,
+    );
+  }
+}
