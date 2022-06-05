@@ -1,5 +1,5 @@
-use std::net::TcpListener;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
+use std::net::TcpListener;
 use uuid::Uuid;
 
 use zero2prod;
@@ -12,8 +12,7 @@ pub struct TestApp {
 }
 
 async fn spawn_app() -> TestApp {
-  let listener = TcpListener::bind("127.0.0.1:0")
-    .expect("failed to bind random port");
+  let listener = TcpListener::bind("127.0.0.1:0").expect("failed to bind random port");
   let port = listener.local_addr().unwrap().port();
   let address = format!("http://127.0.0.1:{}", port);
 
@@ -22,8 +21,7 @@ async fn spawn_app() -> TestApp {
 
   let connection_pool = configure_database(&configuration.database).await;
 
-  let server = run(listener, connection_pool.clone())
-    .expect("failed to bind address");
+  let server = run(listener, connection_pool.clone()).expect("failed to bind address");
   let _ = tokio::spawn(server);
 
   TestApp {
@@ -40,7 +38,7 @@ pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
     .execute(format!(r#"CREATE DATABASE "{}";"#, config.database_name).as_str())
     .await
     .expect("failed to create database");
-  
+
   let connection_pool = PgPool::connect(&config.connection_string())
     .await
     .expect("failed to connect to database");
