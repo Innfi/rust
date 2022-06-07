@@ -39,3 +39,4 @@ features = [
   "chrono",
   "migrate"
 ]
+once_cell = "1"
