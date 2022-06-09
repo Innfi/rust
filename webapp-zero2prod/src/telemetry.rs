@@ -5,11 +5,11 @@ use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
 use tracing_subscriber::fmt::MakeWriter;
 use tracing_log::LogTracer;
 
-pub fn get_subscriber(
+pub fn get_subscriber<Sink>(
   name: String,
-  env_filter: String
+  env_filter: String,
   sink: Sink,
-) -> impl Subscriber + Send + Sync
+) -> impl Subscriber + Sync + Send 
   where Sink: for<'a> MakeWriter<'a> + Send + Sync + 'static,
 {
   let env_filter = EnvFilter::try_from_default_env()
