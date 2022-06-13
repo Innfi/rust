@@ -14,10 +14,6 @@ pub fn get_subscriber<Sink>(
 {
   let env_filter = EnvFilter::try_from_default_env()
     .unwrap_or_else(|_| EnvFilter::new(env_filter));
-  // let formatting_layer = BunyanFormattingLayer::new(
-  //   name,
-  //   std::io::stdout
-  // );
   let formatting_layer = BunyanFormattingLayer::new(name, sink);
 
   Registry::default()
