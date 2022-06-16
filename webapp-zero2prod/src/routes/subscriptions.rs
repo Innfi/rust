@@ -22,6 +22,9 @@ pub async fn subscribe(
   form: web::Form<FormData>,
   pool: web::Data<PgPool>
 ) -> HttpResponse {
+
+  let subscriber_name = crate::domain::SubscriberName(form.name.clone());
+
   let query_span = tracing::info_span!(
     "saving new subscriber details in the database"
   );
