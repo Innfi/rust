@@ -1,0 +1,16 @@
+[package]
+name = "test-tokio"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+path = "src/main.rs"
+name = "test_tokio"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+amiquip = { version = "0.4", default-features = false }
+
