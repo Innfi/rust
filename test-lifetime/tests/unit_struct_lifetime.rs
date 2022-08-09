@@ -12,6 +12,15 @@ impl<'a> fmt::Display for Person<'a> {
   }
 }
 
+impl<'a> Person<'a> {
+  fn new(name: &'a str) -> Person {
+    Self { 
+      name,
+      age: name.len() as u8,
+    }
+  }
+}
+
 #[test]
 fn derive_debug() {
   let name ="peter";
@@ -19,4 +28,11 @@ fn derive_debug() {
   let peter = Person { name, age };
 
   println!("{:#}?", peter);
+}
+
+#[test]
+fn struct_initialize_order() {
+  let peter = Person::new("pater");
+
+  assert_eq!(peter.age, 5);
 }
