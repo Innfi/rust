@@ -19,6 +19,7 @@ fn load_confs() -> Result<Confs, config::ConfigError> {
   let conf_dir = base_path.join("conf");
 
   confs.merge(config::File::from(conf_dir.join("base")).required(true))?;
+  println!("after reading confs");
 
   confs.try_into()
 }
