@@ -1,2 +1,2 @@
 #!/bin/bash
-docker run --name tester -it tester:0.1.0 sh
+docker run -d -p 1330:1330 tester:0.1.0

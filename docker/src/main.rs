@@ -9,7 +9,7 @@ struct Confs {
 
 #[derive(serde::Deserialize)]
 struct BasicConfs {
-  port: u8,
+  port: u32,
   key: String,
 }
 
@@ -19,8 +19,6 @@ fn load_confs() -> Result<Confs, config::ConfigError> {
   let conf_dir = base_path.join("conf");
 
   confs.merge(config::File::from(conf_dir.join("base")).required(true))?;
-  println!("after reading confs");
-
   confs.try_into()
 }
 
@@ -29,7 +27,8 @@ async fn main() -> std::io::Result<()> {
   let confs = load_confs().expect("failed to find conf files");
   println!("load confs for {}", confs.basic.key);
 
-  let url = format!("127.0.0.1:{}", confs.basic.port);
+  let url = format!("0.0.0.0:{}", confs.basic.port as u32);
+  println!("url: {}", url);
   let listener = TcpListener::bind(url.as_str())?;
   println!("starting http server");
 
