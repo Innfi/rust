@@ -1,0 +1,17 @@
+[package]
+name = "test_confs"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+path = "src/main.rs"
+name = "test_confs"
+
+[dependencies]
+serde = "1.0.138"
+serde_json = "1.0.82"
+lazy_static = "1.4.0"
+config = "0.13.2"
