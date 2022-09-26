@@ -20,8 +20,8 @@ impl Logger {
   // TODO: log level, debug / trace / error
   // reconnect logic?
 
-  async fn info(&self, payload: &str) -> Result<(), Error> {
-    self.client.index(IndexParts::IndexId("temp", "1"))
+  pub async fn info(&self, payload: &str) -> Result<(), Error> {
+    self.client.index(IndexParts::IndexId("new_key", "1"))
       .body(json!({
         "id": 1,
         "payload": payload,
