@@ -12,7 +12,7 @@ mod test_link {
 
   #[test]
   fn test_manual_link_with_option() {
-    let mut head = Some(Rc::new(Node {
+    let head = Some(Rc::new(Node {
       elem: 1,
       prev: None,
       next: None,
